@@ -1,5 +1,12 @@
 #!/bin/sh
 
+PUID=${PUID:-500}
+GUID=${GUID:-500}
+usermod --uid ${PUID} ums
+groupmod --gid ${GUID} ums
+UMASK_SET=${UMASK_SET:-022}
+umask "$UMASK_SET"
+
 # function to provide some standard output
 console_output() {
   echo "${1}  $(date +"%H:%M:%S.%3N") [entrypoint] ${2}"
@@ -58,20 +65,20 @@ do
     GROUP="$(stat -c '%g' /opt/ums/${FILEorDIR})"
 
     # check to see if permissions are incorrect or FORCE_CHOWN=true
-    if [ "${OWNER}" != "500" ] || [ "${GROUP}" != "500" ] || [ "${FORCE_CHOWN}" = "true" ]
+    if [ "${OWNER}" != "${PUID}" ] || [ "${GROUP}" != "${PGID}" ] || [ "${FORCE_CHOWN}" = "true" ]
     then
       # special output if FORCE_CHOWN=true
       if [ "${FORCE_CHOWN}" = "true" ]
       then
         # FORCE_CHOWN=true
-        console_output INFO "FORCE_CHOWN=true; setting ownership on '/opt/ums/${FILEorDIR}' to (500:500)"
+        console_output INFO "FORCE_CHOWN=true; setting ownership on '/opt/ums/${FILEorDIR}' to (${PUID}:${PGID})"
       else
         # permissions are just incorrect; notify user that uid:gid are not correct and fix them
-        console_output WARN "ownership not correct on '/opt/ums/${FILEorDIR}' (${OWNER}:${GROUP}); setting correct ownership (500:500)"
+        console_output WARN "ownership not correct on '/opt/ums/${FILEorDIR}' (${OWNER}:${GROUP}); setting correct ownership (${PUID}:${PGID})"
       fi
 
       # change ownership
-      chown -R 500:500 "/opt/ums/${FILEorDIR}"
+      chown -R ${PUID}:${PGID} "/opt/ums/${FILEorDIR}"
     else
       console_output INFO "ownership is correct on '/opt/ums/${FILEorDIR}'"
     fi
@@ -83,6 +90,7 @@ do
     find "/opt/ums/${FILEorDIR}" -type f ! -perm -640 -exec chmod -v 640 {} \;
   fi
 done
+
 
 # hack: add /opt/ums/linux to path
 console_output INFO "Adding '/opt/ums/linux' to the PATH"
